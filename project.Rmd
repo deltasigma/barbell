@@ -1,7 +1,7 @@
 ---
-title: "MachineLearning"
+title: "Barbell Prediction"
 author: "Fábio Franco Costa"
-date: "April 24, 2015"
+date: "17/05/2015"
 output: html_document
 ---
 
@@ -13,7 +13,6 @@ You should create a report describing
 * what you think the expected out of sample error is, 
 * and why you made the choices you did.  
 * You will also use your prediction model to predict 20 different test cases. 
-
 
 ```{r}
 # Load packages and set seed
@@ -53,11 +52,3 @@ predictions <- predict(modelFit, newdata = testing)
 confusionMatrix(predictions, testing$classe)
 
 ```
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
