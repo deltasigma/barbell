@@ -79,7 +79,7 @@ predictions <- predict(modelFit, newdata = testing)
 confusionMatrix(predictions, testing$classe)
 
 # Predict real cases
-cases <- predict(modelFit, newdata = testing)
+cases <- predict(modelFit, newdata = pmlFinalTest)
 
 # Generate predictions
 pml_write_files = function(x){
@@ -90,6 +90,7 @@ pml_write_files = function(x){
   }
 }
 
+setwd("~/Work/DSCoursera/datasciencecoursera/barbell/results")
 pml_write_files(cases)
 
 ```
