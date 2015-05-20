@@ -13,6 +13,7 @@ You should create a report describing
 * what you think the expected out of sample error is, 
 * and why you made the choices you did.  
 * You will also use your prediction model to predict 20 different test cases. 
+https://www.youtube.com/watch?v=hifQl_9Ugqo
 
 ```{r}
 # Load packages and set seed
@@ -23,17 +24,43 @@ set.seed(666)
 pmlData <- read.csv("pml-training.csv")
 pmlFinalTest <- read.csv("pml-testing.csv") 
 
-# Filter relevant columns/rows
-okCases <- complete.cases(pmlData)
+# Test which variables are common to both dataset
+common = intersect(names(pmlData),names(pmlFinalTest))
 
-# Convert variables to factor 
+# Select data only when "new_windows" = yes
+#data <- pmlData[pmlData$new_window == 'yes', ]
+data <- pmlData
+classe <- data$classe
+
+# Drop unnecessary columns
+drops <- c('X', 'user_name', 'raw_timestamp_part_1', 'raw_timestamp_part_2',
+         'cvtd_timestamp','new_window', 'num_window', 'kurtosis_yaw_belt',
+         'skewness_yaw_belt', 'kurtosis_yaw_dumbbell', 'skewness_yaw_dumbbell',
+         'amplitude_yaw_dumbbell', 'amplitude_yaw_belt')
+data <- data[,!(names(data) %in% drops)]
+
+# Convert variables to factor
+asNumeric <- function(x) as.numeric(as.character(x))
+factorsNumeric <- function(d) modifyList(d, lapply(d[, sapply(d, is.factor)], 
+                                                   asNumeric))
+data <- factorsNumeric(data)
+
+# Remove columns that have NAs
+data <- data[,colSums(is.na(data)) == 0]
+
+# Add classe variable back
+data <- data.frame(classe, data)
+
+# Imputting data
+#require(DMwR)
+#data<-knnImputation(data,k=2)
 
 # Preprocess training data
 
 # Create trainning datasets
-inTrain <- createDataPartition(y = pmlData$classe, p = 0.8, list = F)
-trainning <- pmlData[inTrain,]
-testing <- pmlData[-inTrain,]
+inTrain <- createDataPartition(y = data$classe, p = 0.8, list = F)
+training <- data[inTrain,]
+testing <- data[-inTrain,]
 
 # Setup model parameters
 #train_control <- trainControl(method="boot", number=2, allowParallel=TRUE)
@@ -41,14 +68,28 @@ testing <- pmlData[-inTrain,]
 # Fit model: random forest
 system.time({
 modelFit <- train(classe ~ .,
-                  data = trainning,
+                  data = training,
                   #trControl=train_control, ntree=100,
                   verbose=FALSE,
-                  method=c("gbm"))
+                  method=c("rf"))
 })
 
 # Test the model
 predictions <- predict(modelFit, newdata = testing)
 confusionMatrix(predictions, testing$classe)
+
+# Predict real cases
+cases <- predict(modelFit, newdata = testing)
+
+# Generate predictions
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(cases)
 
 ```

@@ -1,3 +1,4 @@
 # Data files
 *.csv
 .Rproj.user
+results/*
