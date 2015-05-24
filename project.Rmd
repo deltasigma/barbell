@@ -4,81 +4,102 @@ author: "Fábio Franco Costa"
 date: "17/05/2015"
 output: html_document
 ---
+## Executive Summary
+In this assignment we created a model to predict 5 possible *classes*. The final model was tested in 20 cases supplied by the course staff. Our model have a very high accuracy and we managed to correctly predict every case.
 
+## Model creation
+For this assignment we created a model from a subset of the original dataset.  
 
-You should create a report describing  
-
-* how you built your model,
-* how you used cross validation  
-* what you think the expected out of sample error is, 
-* and why you made the choices you did.  
-* You will also use your prediction model to predict 20 different test cases. 
-https://www.youtube.com/watch?v=hifQl_9Ugqo
-
-```{r}
-# Load packages and set seed
-library("caret")
-set.seed(666)
-
+```{r, echo=FALSE}
 # Read Data
 pmlData <- read.csv("pml-training.csv")
 pmlFinalTest <- read.csv("pml-testing.csv") 
 
-# Test which variables are common to both dataset
-common = intersect(names(pmlData),names(pmlFinalTest))
-
-# Select data only when "new_windows" = yes
-#data <- pmlData[pmlData$new_window == 'yes', ]
+# Copy data to avoid reload the CSV. Not really necessary but usefull in 
+# development. Pardon my lazyness to set cache=FALSE ;-) 
 data <- pmlData
 classe <- data$classe
+```
 
+We dropped columns with variables that should not be included in the model like **'user_name'**. We worried that some of this variables could bias the model. For instance, the user could bias the analysis should one of then exercise in a more correct or incorrect way. We also removed some variables that are clearly full of NAs from simple visual inspection. 
+```{r}
 # Drop unnecessary columns
 drops <- c('X', 'user_name', 'raw_timestamp_part_1', 'raw_timestamp_part_2',
          'cvtd_timestamp','new_window', 'num_window', 'kurtosis_yaw_belt',
          'skewness_yaw_belt', 'kurtosis_yaw_dumbbell', 'skewness_yaw_dumbbell',
          'amplitude_yaw_dumbbell', 'amplitude_yaw_belt')
 data <- data[,!(names(data) %in% drops)]
+```
 
-# Convert variables to factor
+Many numeric variables were imported as factor. We managed to correct that by creating two auxiliary functions as shown below:
+```{r, warning=FALSE}
+# Auxiliary functions
 asNumeric <- function(x) as.numeric(as.character(x))
 factorsNumeric <- function(d) modifyList(d, lapply(d[, sapply(d, is.factor)], 
                                                    asNumeric))
+# Convert variables from factor
 data <- factorsNumeric(data)
+```
 
+Due to factor/numeric conversion some values were coerced to NAs. We decided to remove columns that have some NAs. In a more complex setting we could try to impute this values, but our exercise did not need this extra processing.
+```{r}
 # Remove columns that have NAs
 data <- data[,colSums(is.na(data)) == 0]
-
+```
+```{r, echo=FALSE}
 # Add classe variable back
 data <- data.frame(classe, data)
+```
 
-# Imputting data
-#require(DMwR)
-#data<-knnImputation(data,k=2)
-
-# Preprocess training data
-
+We will use the **Caret** package to create our model. The first step is data partitioning as training and testing datasets.
+```{r, echo=FALSE, message=FALSE}
+# Load packages and set seed
+library("caret")
+library('scales')
+set.seed(666)
+```
+```{r}
 # Create trainning datasets
 inTrain <- createDataPartition(y = data$classe, p = 0.8, list = F)
 training <- data[inTrain,]
 testing <- data[-inTrain,]
+```
 
+We train the model, with a 10-fold cross validation strategy. You can see bellow that we enclosed our train function in **system.time()**. We used execution time as benchmark to fine tune some options during development. 
+```{r, cache=TRUE}
 # Setup model parameters
-#train_control <- trainControl(method="boot", number=2, allowParallel=TRUE)
+train_control <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10,
+                           allowParallel=TRUE)
 
 # Fit model: random forest
 system.time({
 modelFit <- train(classe ~ .,
                   data = training,
-                  #trControl=train_control, ntree=100,
+                  trControl=train_control, 
                   verbose=FALSE,
                   method=c("rf"))
 })
+```
 
+Finally, we can use the **confusionMatrix()** to check our predictions and get the **Accurary** from out model. We will use that to estimate the **Error Rate**.
+```{r, echo=FALSE}
 # Test the model
 predictions <- predict(modelFit, newdata = testing)
-confusionMatrix(predictions, testing$classe)
+CM <- confusionMatrix(predictions, testing$classe)
+error <- 1 - CM$overall[1]
+CM
+```
+## Cross Validation and Error
+For cross validation, we adopted a K-Fold strategy with 10 folds. We used **trainControl()** to set our options.  
+Our out of sample error is estimated to be `r percent(error)`
 
+## Test Cases
+Our prediction model was able to predict correctly all the assignments test cases.
+```{r, echo=FALSE}
 # Predict real cases
+# Output ommited for final report
 cases <- predict(modelFit, newdata = pmlFinalTest)
 
 # Generate predictions
@@ -89,8 +110,7 @@ pml_write_files = function(x){
     write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
   }
 }
-
-setwd("~/Work/DSCoursera/datasciencecoursera/barbell/results")
-pml_write_files(cases)
-
+#setwd("~/Work/DSCoursera/datasciencecoursera/barbell/results")
+#pml_write_files(cases)
+#https://www.youtube.com/watch?v=hifQl_9Ugqo
 ```

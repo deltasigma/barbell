@@ -2,3 +2,5 @@
 *.csv
 .Rproj.user
 results/*
+modelo.RData
+project_cache/
